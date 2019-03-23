@@ -1,0 +1,587 @@
+pages:
+  stage: build
+  image: alpine
+  except:
+    - schedules
+  script:
+    - apk update && apk add gcc bison musl-dev openssl-dev libcap-dev python2-dev asciidoc findutils gzip
+    - python ./waf configure --enable-doc --prefix=/tmp/docbot-local --htmldir=`pwd`/public/latest/ build install
+    - cp www/favicon.ico public
+    - cp docs/top.html.in public/index.html
+    - cp docs/top-asciidoc.css public/asciidoc.css
+    - mv public/latest/404.html public/404.html
+    - sed -i -E -e 's!\./(asciidoc\.(js|css))!\./latest/\1!g' public/404.html
+    - find public -type f -iregex '.*\.\(htm\|html\|txt\|text\|js\|css\)$' -execdir gzip -f --keep {} \;
+  allow_failure: true
+  artifacts:
+    paths:
+       - public
+  tags:
+    - gitlab-org
+
+#codequality:
+#  stage: test
+#  image: docker:latest
+#  variables:
+#    DOCKER_DRIVER: overlay
+#  services:
+#    - docker:dind
+#  script:
+#    - docker pull codeclimate/codeclimate
+#    - docker run --env CODECLIMATE_CODE="$PWD" --volume "$PWD":/code --volume /var/run/docker.sock:/var/run/docker.sock --volume /tmp/cc:/tmp/cc codeclimate/codeclimate analyze -f json > codeclimate.json
+#  allow_failure: true
+#  artifacts:
+#    paths: [codeclimate.json]
+#  tags:
+#    - docker
+
+.job_template: &job_definition
+  stage: build
+  except:
+    - schedules
+  artifacts:
+    expire_in: 7d
+    paths:
+      - build/main/attic/sht
+      - build/main/ntpclients/ntpdig
+      - build/main/ntpclients/ntpkeygen
+      - build/main/ntpclients/ntpleapfetch
+      - build/main/ntpclients/ntploggps
+      - build/main/ntpclients/ntplogtemp
+      - build/main/ntpclients/ntpmon
+      - build/main/ntpclients/ntpq
+      - build/main/ntpclients/ntpsweep
+      - build/main/ntpclients/ntptrace
+      - build/main/ntpclients/ntpviz
+      - build/main/ntpclients/ntpwait
+      - build/main/ntpd/ntpd
+      - build/main/ntpfrob/ntpfrob
+  retry: 2
+
+alpine-basic:
+  <<: *job_definition
+  image: alpine
+  script:
+    - apk update && apk add gcc bison musl-dev openssl-dev libcap-dev python2-dev
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+alpine-edge-basic:
+  <<: *job_definition
+  image: alpine:edge
+  allow_failure: true
+  script:
+    - apk update && apk add gcc bison musl-dev openssl-dev libcap-dev python2-dev
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+debian-oldoldstable-basic:
+  <<: *job_definition
+  image: debian:oldoldstable-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+debian-oldoldstable-refclocks:
+  <<: *job_definition
+  image: debian:oldoldstable-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+debian-oldstable-basic:
+  <<: *job_definition
+  image: debian:oldstable-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+debian-oldstable-refclocks:
+  <<: *job_definition
+  image: debian:oldstable-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+debian-stable-basic:
+  <<: *job_definition
+  image: debian:stable-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+debian-stable-refclocks:
+  <<: *job_definition
+  image: debian:stable-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+debian-testing-basic:
+  <<: *job_definition
+  image: debian:testing-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+debian-testing-refclocks:
+  <<: *job_definition
+  image: debian:testing-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+debian-unstable-basic:
+  <<: *job_definition
+  image: debian:unstable-slim
+  allow_failure: true
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+debian-unstable-refclocks:
+  <<: *job_definition
+  image: debian:unstable-slim
+  allow_failure: true
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+ubuntu-latest-basic:
+  <<: *job_definition
+  image: ubuntu:latest
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+ubuntu-latest-refclocks:
+  <<: *job_definition
+  image: ubuntu:latest
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+ubuntu-rolling-basic:
+  <<: *job_definition
+  image: ubuntu:rolling
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+ubuntu-rolling-refclocks:
+  <<: *job_definition
+  image: ubuntu:rolling
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+ubuntu-devel-basic:
+  <<: *job_definition
+  image: ubuntu:devel
+  allow_failure: true
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+ubuntu-devel-refclocks:
+  <<: *job_definition
+  image: ubuntu:devel
+  allow_failure: true
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+gcc-latest-basic:
+  <<: *job_definition
+  image: gcc:latest
+  script:
+    - apt-get update -qq && apt-get install -y -qq bison libcap-dev pps-tools python-dev
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+gcc-latest-refclocks:
+  <<: *job_definition
+  image: gcc:latest
+  script:
+    - apt-get update -qq && apt-get install -y -qq bison libcap-dev pps-tools python-dev
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+freebsd-11-basic:
+  <<: *job_definition
+  script:
+    - python ./waf configure build
+  tags:
+    - freebsd-11
+  only:
+    - branches@NTPsec/ntpsec
+
+freebsd-11-refclocks:
+  <<: *job_definition
+  script:
+    - python ./waf configure --refclock=all build
+  tags:
+    - freebsd-11
+  only:
+    - branches@NTPsec/ntpsec
+
+freebsd-12-basic:
+  <<: *job_definition
+  script:
+    - python ./waf configure build
+  tags:
+    - freebsd-12
+  only:
+    - branches@NTPsec/ntpsec
+
+freebsd-12-refclocks:
+  <<: *job_definition
+  script:
+    - python ./waf configure --refclock=all build
+  tags:
+    - freebsd-12
+  only:
+    - branches@NTPsec/ntpsec
+
+centos-latest-basic:
+  <<: *job_definition
+  image: centos:latest
+  script:
+    - yum -y install bison gcc openssl-devel libcap-devel pps-tools-devel python-devel
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+centos-latest-refclocks:
+  <<: *job_definition
+  image: centos:latest
+  script:
+    - yum -y install bison gcc openssl-devel libcap-devel pps-tools-devel python-devel
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+fedora-latest-basic:
+  <<: *job_definition
+  image: fedora:latest
+  script:
+    - yum -y install bison gcc openssl-devel libcap-devel pps-tools-devel python-devel
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+fedora-latest-refclocks:
+  <<: *job_definition
+  image: fedora:latest
+  script:
+    - yum -y install bison gcc openssl-devel libcap-devel pps-tools-devel python-devel
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+fedora-branched-basic:
+  <<: *job_definition
+  image: fedora:branched
+  script:
+    - yum -y install bison gcc openssl-devel libcap-devel pps-tools-devel python-devel
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+fedora-branched-refclocks:
+  <<: *job_definition
+  image: fedora:branched
+  script:
+    - yum -y install bison gcc openssl-devel libcap-devel pps-tools-devel python-devel
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+fedora-rawhide-basic:
+  <<: *job_definition
+  image: registry.fedoraproject.org/fedora:rawhide
+  allow_failure: true
+  script:
+    - yum -y install bison gcc openssl-devel libcap-devel pps-tools-devel python-devel
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+fedora-rawhide-refclocks:
+  <<: *job_definition
+  image: registry.fedoraproject.org/fedora:rawhide
+  allow_failure: true
+  script:
+    - yum -y install bison gcc openssl-devel libcap-devel pps-tools-devel python-devel
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+fedora-rawhide-refclocks-gpsd:
+  <<: *job_definition
+  image: registry.fedoraproject.org/fedora:rawhide
+  allow_failure: true
+  script:
+    - yum -y install bison gcc openssl-devel libcap-devel pps-tools-devel python3-devel python3-gpsd
+    - python3 ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+python3:
+  <<: *job_definition
+  image: python:3
+  script:
+    - apt-get update -qq && apt-get install -y -qq bison libcap-dev pps-tools
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+python-coverage:
+  <<: *job_definition
+  script:
+    - apt-get update -qq && apt-get install -y -qq netbase bison python-dev python-coverage
+    - python ./waf configure build
+    - for i in build/main/tests/pylib/test_*; do python-coverage run -a --source build/main/pylib $i; done
+    - python-coverage report
+  tags:
+    - gitlab-org
+
+clang-basic:
+  <<: *job_definition
+  image: debian:testing-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison libssl-dev libcap-dev pps-tools python-dev clang
+    - python ./waf configure --check-c-compiler=clang build
+  tags:
+    - gitlab-org
+
+clang-refclocks:
+  <<: *job_definition
+  image: debian:testing-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison libssl-dev libcap-dev pps-tools python-dev clang
+    - python ./waf configure --check-c-compiler=clang --refclock=all build
+  tags:
+    - gitlab-org
+
+openSUSE-leap-basic:
+  <<: *job_definition
+  image: opensuse/leap
+  script:
+    - zypper -n install bison gcc libopenssl-devel libcap-devel pps-tools-devel python-devel python-curses
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+openSUSE-leap-refclocks:
+  <<: *job_definition
+  image: opensuse/leap
+  script:
+    - zypper -n install bison gcc libopenssl-devel libcap-devel pps-tools-devel python-devel python-curses
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+openSUSE-tumbleweed-basic:
+  <<: *job_definition
+  image: opensuse/tumbleweed
+  allow_failure: true
+  script:
+    - zypper -n install bison gcc libopenssl-devel libcap-devel pps-tools-devel python-devel python-curses
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+openSUSE-tumbleweed-refclocks:
+  <<: *job_definition
+  image: opensuse/tumbleweed
+  allow_failure: true
+  script:
+    - zypper -n install bison gcc libopenssl-devel libcap-devel pps-tools-devel python-devel python-curses
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+debian-stable-basic-32bit:
+  <<: *job_definition
+  image: i386/debian:stable-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+debian-stable-refclocks-32bit:
+  <<: *job_definition
+  image: i386/debian:stable-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+debian-stable-mDNS-basic:
+  <<: *job_definition
+  image: debian:stable-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev libavahi-compat-libdnssd-dev
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+debian-stable-mDNS-refclocks:
+  <<: *job_definition
+  image: debian:stable-slim
+  script:
+    - apt-get update
+    - apt-get install -y netbase bison gcc libssl-dev libcap-dev pps-tools python-dev libavahi-compat-libdnssd-dev
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+cross-build:
+  <<: *job_definition
+  script:
+    - PYTHON_VERSION=2.7 PYTAG=cpython27 pyext_PATTERN="%s.so" PYTHON_LDFLAGS='-lpthread -ldl' ./waf configure --cross-compiler=arm-linux-gnueabihf-gcc-5 --cross-cflags '-I/srv/arm-local/include -I/srv/arm-local/include/python2.7' --cross-ldflags '-L/srv/arm-local/lib' --pythondir=/srv/arm-local/lib/python2.7/dist-packages --pythonarchdir=/srv/arm-local/lib/python2.7/dist-packages build
+  tags:
+    - ubuntu-1604-lts
+  only:
+    - branches@NTPsec/ntpsec
+
+gentoo-basic:
+  <<: *job_definition
+  image: gentoo/stage3-amd64
+  script:
+    - wget -q http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2
+    - wget -q http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2.md5sum
+    - md5sum -c portage-latest.tar.bz2.md5sum
+    - tar -xjf portage-latest.tar.bz2 -C /usr
+    - emerge -q y sys-libs/libcap sys-devel/bison net-misc/pps-tools
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+gentoo-refclocks:
+  <<: *job_definition
+  image: gentoo/stage3-amd64
+  script:
+    - wget -q http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2
+    - wget -q http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2.md5sum
+    - md5sum -c portage-latest.tar.bz2.md5sum
+    - tar -xjf portage-latest.tar.bz2 -C /usr
+    - emerge -q y sys-libs/libcap sys-devel/bison net-misc/pps-tools
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+gentoo-hardened-basic:
+  <<: *job_definition
+  image: gentoo/stage3-amd64-hardened
+  script:
+    - wget -q http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2
+    - wget -q http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2.md5sum
+    - md5sum -c portage-latest.tar.bz2.md5sum
+    - tar -xjf portage-latest.tar.bz2 -C /usr
+    - emerge -q y sys-libs/libcap sys-devel/bison net-misc/pps-tools
+    - python ./waf configure build
+  tags:
+    - gitlab-org
+
+gentoo-hardened-refclocks:
+  <<: *job_definition
+  image: gentoo/stage3-amd64-hardened
+  script:
+    - wget -q http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2
+    - wget -q http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2.md5sum
+    - md5sum -c portage-latest.tar.bz2.md5sum
+    - tar -xjf portage-latest.tar.bz2 -C /usr
+    - emerge -q y sys-libs/libcap sys-devel/bison net-misc/pps-tools
+    - python ./waf configure --refclock=all build
+  tags:
+    - gitlab-org
+
+coverity-scan:
+  script:
+    - ./waf configure
+    - /opt/cov-analysis/bin/cov-build --dir cov-int ./waf build
+    - tar czf ntpsec_coverity.tgz cov-int
+    - curl --form token=$COVERITY_TOKEN --form email=security@ntpsec.org --form file=@ntpsec_coverity.tgz --form version="$(git rev-parse --short HEAD)" --form description="Automatic submission by gitlab-ci" https://scan.coverity.com/builds?project=ntpsec
+  tags:
+    - ubuntu-1604-lts
+  only:
+    - schedules
+
+macos-basic:
+  <<: *job_definition
+  script:
+    - PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig python ./waf configure build
+  tags:
+    - macos
+  only:
+    - branches@NTPsec/ntpsec
+
+macos-refclocks:
+  <<: *job_definition
+  script:
+    - PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig python ./waf configure --refclock=all build
+  tags:
+    - macos
+  only:
+    - branches@NTPsec/ntpsec
